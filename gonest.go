@@ -25,12 +25,12 @@ THE SOFTWARE.
 package gonest
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 )
 
 const USER_AGENT = "gonest library v0.1"
@@ -117,6 +117,58 @@ type OAuth2ResponseError struct {
 
 func (e *OAuth2ResponseError) Error() string {
 	return e.Name
+}
+
+// sets options, path is of form structure/{id} with map[string]interface{}{"away":"home"}
+func (nest *Nest) Set(path string, value map[string]interface{}) error {
+	url := fmt.Sprintf("https://developer-api.nest.com/%s?auth=%s", path, nest.Token)
+
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return nil
+		},
+	}
+
+	buf := new(bytes.Buffer)
+	fmt.Println(string(buf.Bytes()))
+
+	err := json.NewEncoder(buf).Encode(value)
+	if err != nil {
+		return err
+	}
+
+	// used for construction because issue (bug?) in golang with redirects and puts, used
+	// with firebase
+	for {
+		req, err := http.NewRequest("PUT", url, bytes.NewReader(buf.Bytes()))
+		if err != nil {
+			return err
+		}
+
+		req.Header.Set("User-Agent", USER_AGENT)
+		req.Header.Set("Content-Type", "application/json")
+
+		var resp *http.Response
+		if resp, err = client.Do(req); err != nil {
+			return err
+		}
+
+		defer resp.Body.Close()
+
+		switch resp.StatusCode {
+		case http.StatusMovedPermanently, http.StatusFound, http.StatusSeeOther, http.StatusTemporaryRedirect:
+			url = resp.Header.Get("Location")
+			continue
+		}
+
+		if resp.StatusCode != 200 {
+			return errors.New(resp.Status)
+		}
+
+		break
+	}
+
+	return nil
 }
 
 // authorizes the pincode from the authorization request and returns
