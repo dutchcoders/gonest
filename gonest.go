@@ -29,7 +29,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 )
 
@@ -87,8 +86,8 @@ type Response struct {
 }
 
 type OAuth2Response struct {
-	token      string `json:"access_token"`
-	expires_in int    `json:"expires_in"`
+	Token     string `json:"access_token"`
+	ExpiresIn int    `json:"expires_in"`
 }
 
 type OAuth2ResponseError struct {
@@ -103,10 +102,24 @@ func (e *OAuth2ResponseError) Error() string {
 
 // authorizes the pincode from the authorization request and returns
 // access token
-func (nest *Nest) Authorize(secret string, code string) err error {
-	url := fmt.Sprintf("https://api.home.nest.com/oauth2/access_token?code=%s&client_id=%s&client_secret=%s&grant_type=authorization_code", code, nest.clientid, secret)
+func (nest *Nest) Authorize(secret string, code string) error {
+	url := fmt.Sprintf("http://api.home.nest.com/oauth2/access_token?code=%s&client_id=%s&client_secret=%s&grant_type=authorization_code", code, nest.clientid, secret)
 
-	resp, err := http.Post(url, "", nil)
+	client := &http.Client{}
+
+	var err error
+	req, err := http.NewRequest("POST", url, nil)
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("User-Agent", USER_AGENT)
+	req.Header.Set("Accept", "application/json")
+
+	var resp *http.Response
+	if resp, err = client.Do(req); err != nil {
+		return err
+	}
 
 	dec := json.NewDecoder(resp.Body)
 
@@ -114,19 +127,17 @@ func (nest *Nest) Authorize(secret string, code string) err error {
 		var r OAuth2ResponseError
 		if err := dec.Decode(&r); err == io.EOF {
 		} else if err != nil {
-			return "", err
+			return err
 		}
 		return errors.New(r.Description)
 	} else {
 		var r OAuth2Response
 		if err := dec.Decode(&r); err == io.EOF {
 		} else if err != nil {
-			return "", err
+			return err
 		}
 
-		log.Print(r)
-		nest.token = r.token
-
+		nest.token = r.Token
 		return nil
 	}
 }
@@ -175,11 +186,12 @@ func (nest *Nest) get(path string, nr interface{}) error {
 }
 
 // connects to nest api and returns nest object
-func Connect(clientid string, token string) *Nest, error {
-        if token == "" {
-            return nil, errors.New("No authorization token, register at: https://home.nest.com/login/oauth2?client_id=%s&state=STATE", clientid)
-        }
-
+func Connect(clientid string, token string) (*Nest, error) {
 	nest := &Nest{clientid: clientid, token: token}
+
+	if token == "" {
+		return nest, errors.New(fmt.Sprintf("No authorization token, register at: https://home.nest.com/login/oauth2?client_id=%s&state=STATE", clientid))
+	}
+
 	return nest, nil
 }
