@@ -30,6 +30,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 )
 
 const USER_AGENT = "gonest library v0.1"
@@ -43,6 +44,14 @@ type Alarm struct {
 }
 
 type TemperatureScale string
+type Away string
+
+type Structure struct {
+	StructureId string `json:"structure_id"`
+	Name        string `json:"name"`
+	Away        Away   `json:"away"`
+	CountryCode string `json:"country_code"`
+}
 
 type Thermostat struct {
 	DeviceId               string           `json:"device_id"`
@@ -82,7 +91,8 @@ type Devices struct {
 }
 
 type Response struct {
-	Devices Devices `json:"devices"`
+	Devices    Devices              `json:"devices"`
+	Structures map[string]Structure `json:"structure"`
 }
 
 type UnauthorizedError struct {
@@ -149,6 +159,10 @@ func (nest *Nest) Authorize(secret string, code string) error {
 		nest.Token = r.Token
 		return nil
 	}
+}
+
+func (nest *Nest) Structures(o interface{}) error {
+	return nest.get("structures", o)
 }
 
 func (nest *Nest) All(o interface{}) error {
