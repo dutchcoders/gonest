@@ -36,7 +36,7 @@ const USER_AGENT = "gonest library v0.1"
 
 type Nest struct {
 	clientid string
-	token    string
+	Token    string
 }
 
 type Alarm struct {
@@ -83,6 +83,15 @@ type Devices struct {
 
 type Response struct {
 	Devices Devices `json:"devices"`
+}
+
+type UnauthorizedError struct {
+	error
+	Url string
+}
+
+func (e UnauthorizedError) Error() string {
+	return "No access token"
 }
 
 type OAuth2Response struct {
@@ -137,7 +146,7 @@ func (nest *Nest) Authorize(secret string, code string) error {
 			return err
 		}
 
-		nest.token = r.Token
+		nest.Token = r.Token
 		return nil
 	}
 }
@@ -152,7 +161,7 @@ func (nest *Nest) Devices(o interface{}) error {
 
 // gets response from nest api
 func (nest *Nest) get(path string, nr interface{}) error {
-	url := fmt.Sprintf("https://developer-api.nest.com/%s?auth=%s", path, nest.token)
+	url := fmt.Sprintf("https://developer-api.nest.com/%s?auth=%s", path, nest.Token)
 
 	client := &http.Client{}
 
@@ -187,10 +196,10 @@ func (nest *Nest) get(path string, nr interface{}) error {
 
 // connects to nest api and returns nest object
 func Connect(clientid string, token string) (*Nest, error) {
-	nest := &Nest{clientid: clientid, token: token}
+	nest := &Nest{clientid: clientid, Token: token}
 
 	if token == "" {
-		return nest, errors.New(fmt.Sprintf("No authorization token, register at: https://home.nest.com/login/oauth2?client_id=%s&state=STATE", clientid))
+		return nest, &UnauthorizedError{Url: fmt.Sprintf("https://home.nest.com/login/oauth2?client_id=%s&state=STATE", clientid)}
 	}
 
 	return nest, nil
