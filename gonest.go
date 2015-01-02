@@ -122,7 +122,7 @@ func (e *OAuth2ResponseError) Error() string {
 // authorizes the pincode from the authorization request and returns
 // access token
 func (nest *Nest) Authorize(secret string, code string) error {
-	url := fmt.Sprintf("http://api.home.nest.com/oauth2/access_token?code=%s&client_id=%s&client_secret=%s&grant_type=authorization_code", code, nest.clientid, secret)
+	url := fmt.Sprintf("https://api.home.nest.com/oauth2/access_token?code=%s&client_id=%s&client_secret=%s&grant_type=authorization_code", code, nest.clientid, secret)
 
 	client := &http.Client{}
 
