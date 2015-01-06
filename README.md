@@ -39,6 +39,10 @@ func main() {
 
 ```
 
+## References
+
+See github.com/dutchcoders/nest/ for complete implementation of library.
+
 ## Contributions
 
 Contributions are welcome.
